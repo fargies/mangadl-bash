@@ -69,7 +69,7 @@ _download_chapter_mangafox() {
 _count_images_mangafox() {
     TOTAL_IMAGES="$(: "$(for page in "${PAGES[@]}"; do
         {
-            grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*(jpg|png)" "${page}/${page}"_chapter >| "${page}/${page}"_images
+            grep -Eo "((http|https):)?//[a-zA-Z0-9./?=_%:-]*(jpg|png)" "${page}/${page}"_chapter | sed 's#^//#https://#' >| "${page}/${page}"_images
             _count < "${page}/${page}"_images
         } &
     done)" && printf "%s\n" "$((${_//$'\n'/ + }))")"

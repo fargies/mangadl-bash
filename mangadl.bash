@@ -263,6 +263,7 @@ _setup_arguments() {
     { [[ ${NUM_OF_SEARCH} = all ]] && unset NUM_OF_SEARCH; } || :
     CORES="$({ nproc || sysctl -n hw.logicalcpu; } 2>| /dev/null)"
     NO_OF_PARALLEL_JOBS="${NO_OF_PARALLEL_JOBS:-${CORES}}"
+    USER_AGENT="${USER_AGENT:-Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0}"
 
     [[ -z ${INPUT_ARRAY[*]} ]] && _short_help
 
@@ -434,7 +435,7 @@ _process_arguments() {
                 { mkdir -p "${CONVERT_DIR}" && cd "${CONVERT_DIR}" && mkdir -p "${PAGES[@]}" && cd - &> /dev/null; } || exit 1
                 _convert_page() {
                     declare page="${1:?}" copy images image current_quality new_quality
-                    mapfile -t images <<< "$(printf "%b\n%b\n" "${page}/"*jpg "${page}/"*png "${page}/"*webp | grep -vE '\*png|\*jpg|\*webp')"
+                    mapfile -t images <<< "$(printf "%b\n%b\n"  "${page}/"*jpeg "${page}/"*jpg "${page}/"*png "${page}/"*webp | grep -vE '\*jpeg|\*png|\*jpg|\*webp')"
                     image="${images[0]}"
                     current_quality="$(identify -format %Q "${image}")"
                     new_quality="$((DECREASE_QUALITY < current_quality ? (current_quality - DECREASE_QUALITY) : current_quality))"
@@ -443,12 +444,13 @@ _process_arguments() {
                     if [[ ${new_quality} -lt ${current_quality} ]]; then
                         mogrify -format jpg -path "${CONVERT_DIR}/${page}" -quality "${new_quality}" "${images[@]}" &> /dev/null &&
                             { printf "1\n" || copy=1; }
-                    elif [[ ${image} =~ png ]]; then
-                        mogrify -format jpg -path "${CONVERT_DIR}/${page}" "${images[@]}" &> /dev/null &&
-                            { printf "1\n" || copy=1; }
                     else
-                        copy=1
+                        for image in "${images[@]}" ; do
+                            magick -format jpg "${image}" "${CONVERT_DIR}/${image%.*}.jpg" &> /dev/null &&
+                                { printf "1\n" || copy=1; }
+                        done
                     fi
+
                     [[ -n ${copy} ]] && {
                         printf "2\n" 1>&2
                         cp -u "${images[@]}" "${CONVERT_DIR}/${page}/"

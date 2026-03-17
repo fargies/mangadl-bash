@@ -63,7 +63,7 @@ _download_images() {
         { [[ ${NO_OF_PARALLEL_JOBS} -gt ${#PAGES[@]} ]] && NO_OF_PARALLEL_JOBS="${#PAGES[@]}"; } || :
 
         printf "%s\n" "${PAGES[@]}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS}" -i \
-            wget -P "{}" --referer="${REFERER}" -c -i "{}/{}"_images &> "${TMPFILE}".log &
+            wget -U "${USER_AGENT}" -P "{}" --referer="${REFERER}" -c -i "{}/{}"_images &> "${TMPFILE}".log &
         pid="${!}"
 
         until [[ -f "${TMPFILE}".log ]]; do sleep 0.5; done
@@ -81,7 +81,7 @@ _download_images() {
         rm -f "${TMPFILE}".log
     else
         for page in "${PAGES[@]}"; do
-            log="$(wget --referer="${REFERER}" -P "${page}" -c -i "${page}/${page}"_images 2>&1)"
+            log="$(wget -U "${USER_AGENT}" --referer="${REFERER}" -P "${page}" -c -i "${page}/${page}"_images 2>&1)"
             SUCCESS_STATUS="$(($(grep -ic 'retrieved\|saved' <<< "${log}") + SUCCESS_STATUS))"
             ERROR_STATUS="$(($(grep -ic 'ERROR 404' <<< "${log}") + ERROR_STATUS))"
             _clear_line 1 1>&2
@@ -92,7 +92,7 @@ _download_images() {
 
     shopt -s extglob
     # shellcheck disable=SC2086
-    mapfile -t IMAGES <<< "$(_tmp="$(printf "%s/*+(jpg|png|webp)\n" "${PAGES[@]}")" && printf "%b\n" ${_tmp})"
+    mapfile -t IMAGES <<< "$(_tmp="$(printf "%s/*+(jpg|jpeg|png|webp)\n" "${PAGES[@]}")" && printf "%b\n" ${_tmp})"
     # shellcheck disable=SC2086
     TOTAL_IMAGES_SIZE="$(
         : "$(wc -c "${IMAGES[@]}" | _tail 1 | grep -Eo '[0-9]'+)"
