@@ -65,6 +65,7 @@ _make_cbz() {
 
     pushd .
     cd "${input}"
+    local input_dir=$(pwd)
     local manga=$(basename "${input}")
     local converted=0
     if [ -d converted ]; then
@@ -73,6 +74,7 @@ _make_cbz() {
         cd converted
     fi
 
+    _print_center "justify" "Creating metadata file..." "*"
     for episode in *; do
         { [ ! -d "${episode}" ] || [ "${episode}" = "converted" ] ; } && continue
 
@@ -85,6 +87,31 @@ _make_cbz() {
 
         rm -f "${out}"
         zip -q -0 "${out}" *.jpeg *.jpg *.png *.webp
+
+        _print_center "justify" "Adding metadata" " "
+        local meta_custom='{"ComicBookInfo/1.0":{'
+
+        if grep -q '^[0-9]+$' <<< ${episode} ; then
+            meta_custom+='"issue":'"${episode}"
+        else
+            meta_custom+='"issue":'"$(jq -R <<< "${episode}")"
+        fi
+        [ -n "${SERIES}" ] && meta_custom+=',"series":'"$(jq -R <<< "${SERIES}")"
+        [ -n "${LANGUAGE}" ] && meta_custom+=',"language":'"$(jq -R <<< "${LANGUAGE}")"
+        if [[ "${TAGS}" =~ ^\[ ]]; then
+            meta_custom+=',"tags":'"${TAGS}"
+        elif [ -n "${TAGS}" ]; then
+            meta_custom+=',"tags":'"$(jq -R -s 'split("[\n ]"; null) | map(select(length > 0))' <<< "${TAGS}")"
+        fi
+        meta_custom+='}}'
+
+        local meta_default='{"ComicBookInfo/1.0":{"credits":[], "series":'"$(jq -R <<< "${manga}")"'}}'
+        local meta=$(jq -s 'reduce .[] as $obj ({}; . * $obj)' - "${input_dir}"/meta*.json <<< "${meta_default}")
+        meta=$(jq -s 'reduce .[] as $obj ({}; . * $obj)' - <<< "${meta}${meta_custom}")
+        zip -q -z "${out}" < /dev/null
+        # zip adds extraneous `\r\n` for lines >254 characters, zipnote doesn't
+        zipnote "${out}" | { cat; echo "${meta}"; } | zipnote -w "${out}"
+
         cd ..
     done
 
