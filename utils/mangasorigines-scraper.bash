@@ -61,7 +61,7 @@ _download_chapter_mangasorigines() {
 _count_images_mangasorigines() {
     TOTAL_IMAGES="$(: "$(for page in "${PAGES[@]}"; do
         {
-            grep -Eo "((http|https):)?//[a-zA-Z0-9./?=_%:-]*(jpg|jpeg|png|webp)" "${page}/${page}"_chapter | grep "/WP-manga/" | sed 's#^//#https://#' >| "${page}/${page}"_images
+            grep -Po "((http|https):)?//[^\"]*(jpg|jpeg|png|webp)(?=\")" "${page}/${page}"_chapter | grep "/WP-manga/" | sed 's#^//#https://#' >| "${page}/${page}"_images
             _count < "${page}/${page}"_images
         } &
     done)" && printf "%s\n" "$((${_//$'\n'/ + }))")"
